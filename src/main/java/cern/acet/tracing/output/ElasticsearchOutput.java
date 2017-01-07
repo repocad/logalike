@@ -10,15 +10,16 @@ package cern.acet.tracing.output;
 
 import java.io.Closeable;
 import java.lang.management.ManagementFactory;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
+import java.net.*;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 import cern.acet.tracing.CloseableOutput;
+import org.elasticsearch.action.admin.cluster.health.ClusterHealthRequest;
 import org.elasticsearch.client.Client;
+import org.elasticsearch.node.NodeValidationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,8 +65,9 @@ public class ElasticsearchOutput implements CloseableOutput<ElasticsearchMessage
      * parameters in the builder.
      *
      * @param builder A {@link Builder} that contains the necessary information to connect to an Elasticsearch cluster.
+     * @throws NodeValidationException If the connection to the cluster failed
      */
-    ElasticsearchOutput(Builder builder) {
+    ElasticsearchOutput(Builder builder) throws NodeValidationException, UnknownHostException {
         this.client = builder.getClient();
         this.consumer = builder.getConsumer(client);
         this.mappingOption = builder.mapping;
@@ -120,9 +122,13 @@ public class ElasticsearchOutput implements CloseableOutput<ElasticsearchMessage
      */
     public static class Builder {
 
+        private static final String NONSENSICAL_PROTOCOL = "lol://"; // Meaningless protocol for URI parsing
+        private static final int DEFAULT_PORT = 9300; // Default Elasticsearch port
+
+
         private String clusterName = "elasticsearch";
         private ElasticsearchIndex defaultIndex = DEFAULT_LOGALIKE_INDEX;
-        private List<String> hosts = new ArrayList<>();
+        private List<InetSocketAddress> hosts = new ArrayList<InetSocketAddress>();
         private Optional<ElasticsearchTemplateMapping> mapping = Optional.empty();
         private TypeStrategy typeStrategy = AcceptStrategy.INSTANCE;
         private Duration flushInterval = FLUSH_INTERVAL_MINUTES;
@@ -159,8 +165,19 @@ public class ElasticsearchOutput implements CloseableOutput<ElasticsearchMessage
          * @return The same builder with the host set.
          */
         public Builder addHost(String host) {
-            this.hosts.add(host);
-            return this;
+            try {
+                final URI uri = new URI(NONSENSICAL_PROTOCOL + host);
+                if (uri.getHost() != null && uri.getPort() != -1) {
+                    this.hosts.add(new InetSocketAddress(uri.getHost(), uri.getPort()));
+                } else if (uri.getHost() != null) {
+                    this.hosts.add(new InetSocketAddress(uri.getHost(), DEFAULT_PORT));
+                } else {
+                    throw new IllegalArgumentException("Malformed host syntax. Expected host:port, got " + host);
+                }
+                return this;
+            } catch (URISyntaxException e) {
+                throw new IllegalArgumentException("Malformed host syntax. Expected host:port, got " + host, e);
+            }
         }
 
         /**
@@ -176,18 +193,19 @@ public class ElasticsearchOutput implements CloseableOutput<ElasticsearchMessage
 
         /**
          * @return An instance of an {@link ElasticsearchOutput}.
+         * @throws NodeValidationException If the connection to the cluster failed.
          */
-        public ElasticsearchOutput build() {
+        public ElasticsearchOutput build() throws NodeValidationException, UnknownHostException {
             return new ElasticsearchOutput(this);
         }
 
-        Client getClient() {
+        Client getClient() throws NodeValidationException, UnknownHostException {
             //@formatter:off
             return new ClientBuilder()
-                .setClusterName(clusterName)
-                .setHosts(hosts)
-                .setNodeName(nodeName)
-                .build();
+                    .setClusterName(clusterName)
+                    .setHosts(hosts)
+                    .setNodeName(nodeName)
+                    .build();
             //@formatter:on
         }
 

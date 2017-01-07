@@ -17,6 +17,9 @@ import cern.acet.tracing.output.elasticsearch.ElasticsearchIndex;
 import cern.acet.tracing.output.elasticsearch.ElasticsearchMessage;
 import cern.acet.tracing.output.elasticsearch.ElasticsearchTemplateMapping;
 import cern.acet.tracing.util.type.strategy.AcceptStrategy;
+import org.elasticsearch.node.NodeValidationException;
+
+import java.net.UnknownHostException;
 
 /**
  * This is a demonstration of the use of the {@link ElasticsearchOutput} in three stages.
@@ -30,7 +33,7 @@ import cern.acet.tracing.util.type.strategy.AcceptStrategy;
  */
 public class ElasticsearchOutputDemonstration {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws NodeValidationException, UnknownHostException {
         Builder builder = ElasticsearchOutput.builder();
 
         // Stage 1 //////////////////////

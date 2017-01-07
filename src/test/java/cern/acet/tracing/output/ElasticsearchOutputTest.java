@@ -18,12 +18,14 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.net.UnknownHostException;
 import java.time.ZonedDateTime;
 import java.util.Optional;
 import java.util.concurrent.CancellationException;
 
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.node.NodeValidationException;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Matchers;
@@ -41,7 +43,7 @@ public class ElasticsearchOutputTest {
     private ElasticsearchOutput.Builder builderSpy;
 
     @Before
-    public void setup() {
+    public void setup() throws NodeValidationException, UnknownHostException {
         mockClient = mock(Client.class);
         builder = ElasticsearchOutput.builder();
         builderSpy = spy(builder);

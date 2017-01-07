@@ -4,26 +4,28 @@
  * This software is distributed under the terms of the GNU General Public Licence version 3 (GPL Version 3),
  * copied verbatim in the file “COPYLEFT”.
  * In applying this licence, CERN does not waive the privileges and immunities granted to it by virtue
- * of its status as an Intergovernmental Organization or submit itself to any jurisdiction. 
- * 
+ * of its status as an Intergovernmental Organization or submit itself to any jurisdiction.
+ * <p>
  * Authors: Gergő Horányi <ghoranyi> and Jens Egholm Pedersen <jegp>
  */
 
 package cern.acet.tracing.output.elasticsearch;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.util.List;
-import java.util.stream.Collectors;
-
-import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.settings.Settings.Builder;
+import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.elasticsearch.node.Node;
-import org.elasticsearch.node.NodeBuilder;
+import org.elasticsearch.node.NodeValidationException;
+import org.elasticsearch.transport.client.PreBuiltTransportClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * A client builder for Elasticsearch that can build clients with different settings and spawn nodes that is a
@@ -36,10 +38,9 @@ public class ClientBuilder {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ClientBuilder.class);
 
-    private static final String UNICAST_HOSTS_KEY = "discovery.zen.ping.unicast.hosts";
     private static final String ES_HOME = System.getProperty("user.dir");
-    private final NodeBuilder nodeBuilder;
     private final Builder settingsBuilder;
+    private List<InetSocketAddress> hosts = Collections.emptyList();
 
     /**
      * Creates a {@link ClientBuilder} with default settings for a client node.
@@ -54,24 +55,16 @@ public class ClientBuilder {
      * @param settings The {@link Settings} to use when building a {@link Node}.
      */
     public ClientBuilder(Settings settings) {
-        this.settingsBuilder = Settings.settingsBuilder().put(settings);
-        this.nodeBuilder = NodeBuilder.nodeBuilder();
-    }
-
-    private ClientBuilder(Builder settingsBuilder) {
-        this.settingsBuilder = settingsBuilder;
-        this.nodeBuilder = NodeBuilder.nodeBuilder();
+        this.settingsBuilder = Settings.builder().put(settings);
     }
 
     /**
-     * Creates a {@link ClientBuilder} with the given settings applied and that uses the given {@link NodeBuilder} when
+     * Creates a {@link ClientBuilder} with the given settings applied when
      * constructing a {@link Node}.
      *
      * @param settingsBuilder The settings to apply at class construction.
-     * @param nodeBuilder The {@link NodeBuilder} to use when constructing the {@link Node}.
      */
-    ClientBuilder(Builder settingsBuilder, NodeBuilder nodeBuilder) {
-        this.nodeBuilder = nodeBuilder;
+    ClientBuilder(Builder settingsBuilder) {
         this.settingsBuilder = settingsBuilder;
     }
 
@@ -91,13 +84,13 @@ public class ClientBuilder {
      *
      * @param hosts The hosts to search for when connecting to the cluster.
      * @return The same {@link ClientBuilder} with the 'discovery.zen.ping.unicast.hosts' property set. If the hosts
-     *         list is empty, we return the same builder.
+     * list is empty, we return the same builder.
      */
-    public ClientBuilder setHosts(List<String> hosts) {
+    public ClientBuilder setHosts(List<InetSocketAddress> hosts) {
         if (hosts.isEmpty()) {
             return this;
         } else {
-            settingsBuilder.put(UNICAST_HOSTS_KEY, hosts.stream().collect(Collectors.joining(",")));
+            this.hosts = hosts;
             return this;
         }
     }
@@ -117,13 +110,15 @@ public class ClientBuilder {
      * Creates a client connection from the settings given in the constructor.
      *
      * @return A {@link Client} if a connection was successfully made.
-     * @throws ElasticsearchException If the connection to the cluster failed.
+     * @throws NodeValidationException If the connection to the cluster failed.
      */
-    public Client build() {
-        if (settingsBuilder.get(UNICAST_HOSTS_KEY) == null) {
+    public Client build() throws NodeValidationException, UnknownHostException {
+        if (hosts.size() == 0) {
             throw new IllegalArgumentException("No hosts defined; Cannot create a client with no hosts to connect to.");
         }
-        return nodeBuilder.settings(settingsBuilder).node().client();
+        PreBuiltTransportClient client = new PreBuiltTransportClient(settingsBuilder.build());
+        hosts.forEach(host -> client.addTransportAddress(new InetSocketTransportAddress(host)));
+        return client;
     }
 
     /**
@@ -141,11 +136,12 @@ public class ClientBuilder {
         LOGGER.info("Set host to {}", hostname);
 
         //@formatter:off
-        return Settings.settingsBuilder()
+        return Settings.builder()
                 .put("path.home", ES_HOME)
-                .put("node.master", false)
+                .put("node.master", false) /* This node should not be master */
+                .put("node.data", false) /* Disable data so this node holds no data */
+                .put("node.ingest", false) /* This node should not use ingest processing */
                 .put("transport.host", hostname)
-                .put("node.client", true) /* Set to client mode so this node will hold no data */
                 .put("http.enabled", false) /* Disable http requests on this node */
                 .put("client.transport.sniff", true); /* Sniff the rest of the cluster for redundancy */
         //@formatter:on
