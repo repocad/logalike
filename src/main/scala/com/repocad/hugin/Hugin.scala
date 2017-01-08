@@ -21,6 +21,13 @@ object Hugin {
   private final val start = Instant.now()
 
   def main(args: Array[String]): Unit = {
+    val host = if (args.length != 1) {
+      println("No host given, defaulting to localhost:9300")
+      "localhost:9300"
+    } else {
+      args(0)
+    }
+
     // Define required fields and the type mapping for Elasticsearch
     val requiredFields = ImmutableMap
       .builder[String, Class[_]]()
@@ -35,7 +42,7 @@ object Hugin {
 
     // Define the output to Elasticsearch and connect to the cluster
     val output = ElasticsearchOutput.builder()
-      .addHost("localhost:9300")
+      .addHost(host)
       .setClusterName("odin")
       .setDefaultIndex(ElasticsearchIndex.daily("logalike"))
       .setNodeName("hugin")
