@@ -11,6 +11,8 @@
 
 package cern.acet.tracing.output.elasticsearch;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.settings.Settings.Builder;
@@ -18,8 +20,6 @@ import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.elasticsearch.node.Node;
 import org.elasticsearch.node.NodeValidationException;
 import org.elasticsearch.transport.client.PreBuiltTransportClient;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -36,7 +36,7 @@ import java.util.List;
  */
 public class ClientBuilder {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(ClientBuilder.class);
+    private static final Logger LOGGER = LogManager.getLogger(ClientBuilder.class);
 
     private static final String ES_HOME = System.getProperty("user.dir");
     private final Builder settingsBuilder;

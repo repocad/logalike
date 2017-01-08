@@ -4,12 +4,17 @@
  * This software is distributed under the terms of the GNU General Public Licence version 3 (GPL Version 3),
  * copied verbatim in the file “COPYLEFT”.
  * In applying this licence, CERN does not waive the privileges and immunities granted to it by virtue
- * of its status as an Intergovernmental Organization or submit itself to any jurisdiction. 
- * 
+ * of its status as an Intergovernmental Organization or submit itself to any jurisdiction.
+ * <p>
  * Authors: Gergő Horányi <ghoranyi> and Jens Egholm Pedersen <jegp>
  */
 
 package cern.acet.tracing.input.file;
+
+import cern.acet.tracing.Message;
+import cern.acet.tracing.input.file.tailer.PositionTailer;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.time.Duration;
@@ -20,13 +25,6 @@ import java.util.concurrent.Executors;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import cern.acet.tracing.input.file.tailer.PositionTailer;
-import org.apache.commons.io.input.Tailer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import cern.acet.tracing.Message;
 
 /**
  * <p>
@@ -52,7 +50,7 @@ public class TailingBuilder<MessageType extends Message<MessageType>> implements
         FileInputBuilder<MessageType, TailingBuilder<MessageType>> {
 
     private static final Duration DEFAULT_FILE_CHECK_INTERVAL = Duration.ofMillis(500);
-    private static final Logger LOGGER = LoggerFactory.getLogger(FileInput.class);
+    private static final Logger LOGGER = LogManager.getLogger(FileInput.class);
 
     private final Function<String, MessageType> converter;
     private final List<File> files = new ArrayList<>();

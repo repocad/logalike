@@ -4,12 +4,19 @@
  * This software is distributed under the terms of the GNU General Public Licence version 3 (GPL Version 3),
  * copied verbatim in the file “COPYLEFT”.
  * In applying this licence, CERN does not waive the privileges and immunities granted to it by virtue
- * of its status as an Intergovernmental Organization or submit itself to any jurisdiction. 
- * 
+ * of its status as an Intergovernmental Organization or submit itself to any jurisdiction.
+ * <p>
  * Authors: Gergő Horányi <ghoranyi> and Jens Egholm Pedersen <jegp>
  */
 
 package cern.acet.tracing.input.file;
+
+import cern.acet.tracing.input.file.store.FilePositionStore;
+import cern.acet.tracing.input.file.tailer.PositionTailer;
+import cern.acet.tracing.util.StreamUtils;
+import org.apache.commons.io.input.Tailer;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
@@ -20,20 +27,12 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
-import cern.acet.tracing.input.file.store.FilePositionStore;
-import cern.acet.tracing.input.file.tailer.PositionTailer;
-import org.apache.commons.io.input.Tailer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import cern.acet.tracing.util.StreamUtils;
-
 /**
  * A factory for creating a single {@link FileInput} which collect lines from one or many {@link File}.
  */
 public class FileTailerFactory implements AutoCloseable {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(FileTailerFactory.class);
+    private static final Logger LOGGER = LogManager.getLogger(FileTailerFactory.class);
     private static final int QUEUE_CAPACITY = 500;
 
     private final Optional<FilePositionStore> positionStoreOption;
@@ -44,7 +43,7 @@ public class FileTailerFactory implements AutoCloseable {
     /**
      * Creates a {@link FileTailerFactory} that spawns {@link Tailer}s which check for file changes in the given
      * interval.
-     * 
+     *
      * @param fileCheckInterval How often files should be checked for changes.
      */
     public FileTailerFactory(Duration fileCheckInterval) {

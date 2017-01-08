@@ -4,12 +4,21 @@
  * This software is distributed under the terms of the GNU General Public Licence version 3 (GPL Version 3),
  * copied verbatim in the file “COPYLEFT”.
  * In applying this licence, CERN does not waive the privileges and immunities granted to it by virtue
- * of its status as an Intergovernmental Organization or submit itself to any jurisdiction. 
- * 
+ * of its status as an Intergovernmental Organization or submit itself to any jurisdiction.
+ * <p>
  * Authors: Gergő Horányi <ghoranyi> and Jens Egholm Pedersen <jegp>
  */
 
 package cern.acet.tracing.output.elasticsearch;
+
+import cern.acet.tracing.util.CloseableConsumer;
+import cern.acet.tracing.util.type.TypeConstraint;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.elasticsearch.action.bulk.BulkProcessor;
+import org.elasticsearch.action.index.IndexRequest;
+import org.elasticsearch.client.Client;
+import org.elasticsearch.common.unit.TimeValue;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -19,16 +28,6 @@ import java.util.ConcurrentModificationException;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
-import org.elasticsearch.action.bulk.BulkProcessor;
-import org.elasticsearch.action.index.IndexRequest;
-import org.elasticsearch.client.Client;
-import org.elasticsearch.common.unit.TimeValue;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import cern.acet.tracing.util.CloseableConsumer;
-import cern.acet.tracing.util.type.TypeConstraint;
 
 /**
  * Handles index requests for messages using a {@link BulkProcessor} that flushes every minute or if size exceeds 5Mb.
@@ -47,7 +46,7 @@ public class BulkConsumer implements CloseableConsumer<ElasticsearchMessage> {
     private static final int DEFAULT_CONCURRENT_REQUESTS = 4;
     private static final int BULK_ACTIONS_LIMIT = 1000;
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(BulkConsumer.class);
+    private static final Logger LOGGER = LogManager.getLogger(BulkConsumer.class);
 
     private final ElasticsearchIndex defaultIndex;
     private final String documentType;
@@ -57,10 +56,10 @@ public class BulkConsumer implements CloseableConsumer<ElasticsearchMessage> {
      * Creates a bulk manager using the given {@link Client} and the default index for messages without any
      * index/indices assigned.
      *
-     * @param client The client to use as target for the messages.
-     * @param defaultIndex The default index used if any message does not have an index assigned.
+     * @param client        The client to use as target for the messages.
+     * @param defaultIndex  The default index used if any message does not have an index assigned.
      * @param flushInterval The interval with which bulks should be flushed if they are not empty.
-     * @param documentType The name of the document type to store the messages under.
+     * @param documentType  The name of the document type to store the messages under.
      */
     public BulkConsumer(Client client, ElasticsearchIndex defaultIndex, Duration flushInterval, String documentType) {
         this(getProcessorFromManager(client, flushInterval), defaultIndex, documentType);
@@ -70,7 +69,7 @@ public class BulkConsumer implements CloseableConsumer<ElasticsearchMessage> {
      * Creates a bulk manager using the given {@link BulkProcessorManager} and the default index for messages without
      * any index/indices assigned.
      *
-     * @param processor The {@link BulkProcessor} that can dispatch messages in bulks.
+     * @param processor    The {@link BulkProcessor} that can dispatch messages in bulks.
      * @param defaultIndex The default index used if any message does not have an index assigned.
      * @param documentType The name of the document type to store the messages under.
      */
@@ -108,7 +107,7 @@ public class BulkConsumer implements CloseableConsumer<ElasticsearchMessage> {
     /**
      * Creates a {@link BulkProcessor} using the given {@link Client}.
      *
-     * @param client The client to use when constructing the {@link BulkProcessor}.
+     * @param client        The client to use when constructing the {@link BulkProcessor}.
      * @param flushInterval The interval with which bulks will be flushed.
      * @return A {@link BulkProcessor} to bulk-process messages.
      */
@@ -128,7 +127,7 @@ public class BulkConsumer implements CloseableConsumer<ElasticsearchMessage> {
      * Adds an index request to store a single message to a single index.
      *
      * @param message The message to index.
-     * @param index The index of the message.
+     * @param index   The index of the message.
      * @param metrics The metrics to record the storage in.
      */
     private void storeMessageToIndex(ElasticsearchMessage message, ElasticsearchIndex index) {
@@ -169,7 +168,7 @@ public class BulkConsumer implements CloseableConsumer<ElasticsearchMessage> {
                 .stream()
                 .filter(entry -> timestampConstraint.canCast(entry.getValue()))
                 .collect(
-                        Collectors.<Map.Entry<String, Object>, String, ZonedDateTime> toMap(entry -> entry.getKey(),
+                        Collectors.<Map.Entry<String, Object>, String, ZonedDateTime>toMap(entry -> entry.getKey(),
                                 entry -> timestampConstraint.cast(entry.getValue())));
     }
 

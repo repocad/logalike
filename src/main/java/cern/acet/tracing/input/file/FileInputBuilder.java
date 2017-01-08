@@ -4,23 +4,20 @@
  * This software is distributed under the terms of the GNU General Public Licence version 3 (GPL Version 3),
  * copied verbatim in the file “COPYLEFT”.
  * In applying this licence, CERN does not waive the privileges and immunities granted to it by virtue
- * of its status as an Intergovernmental Organization or submit itself to any jurisdiction. 
- * 
+ * of its status as an Intergovernmental Organization or submit itself to any jurisdiction.
+ * <p>
  * Authors: Gergő Horányi <ghoranyi> and Jens Egholm Pedersen <jegp>
  */
 
 package cern.acet.tracing.input.file;
 
+import cern.acet.tracing.Message;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
-import java.nio.file.FileVisitResult;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.PathMatcher;
-import java.nio.file.Paths;
-import java.nio.file.SimpleFileVisitor;
+import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
@@ -28,22 +25,17 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import cern.acet.tracing.Message;
-
 /**
  * A builder for {@link FileInput}s.
  *
- * @author jepeders
  * @param <MessageType> The type of {@link Message} converted from the output of the file(s).
  * @param <BuilderType> The sub-type of the builder to return on builder operations.
+ * @author jepeders
  */
 public interface FileInputBuilder<MessageType extends Message<MessageType>, BuilderType extends FileInputBuilder<MessageType, BuilderType>> {
 
     Pattern GROK_PARENT_PATTERN = Pattern.compile("^([^?*]*\\" + File.separator + ")(.*)$");
-    Logger LOGGER = LoggerFactory.getLogger(FileInputBuilder.class);
+    Logger LOGGER = LogManager.getLogger(FileInputBuilder.class);
 
     /**
      * Adds a file that the {@link FileInput} will read when built.
@@ -60,8 +52,8 @@ public interface FileInputBuilder<MessageType extends Message<MessageType>, Buil
      *
      * @param glob The glob pattern to read. The pattern should not be appended with '<code>glob:</code>'.
      * @return A {@link FileInputBuilder} with the file set.
-     * @see FileSystem#getPathMatcher(String).
      * @throws IllegalArgumentException If one or more of the found files did not exist or could not be read.
+     * @see FileSystem#getPathMatcher(String).
      */
     BuilderType addFiles(String glob) throws IllegalArgumentException;
 
@@ -135,7 +127,7 @@ public interface FileInputBuilder<MessageType extends Message<MessageType>, Buil
     /**
      * Gets the glob prefix, defined as the last directory that is not globbed. This is done to avoid traversing as many
      * files as possible.
-     *
+     * <p>
      * <pre>
      *   /tmp/dir/*-glob/log -> /tmp/dir/
      *   /tmp/dir?/log       -> /tmp/

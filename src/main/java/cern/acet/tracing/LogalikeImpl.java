@@ -8,17 +8,16 @@
 
 package cern.acet.tracing;
 
+import cern.acet.tracing.processing.Processor;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import cern.acet.tracing.processing.Processor;
 
 /**
  * An implementation of {@link Logalike} that reads messages from the {@link Input}, processes them with the given
@@ -32,7 +31,7 @@ import cern.acet.tracing.processing.Processor;
  */
 public class LogalikeImpl<MessageType extends Message<MessageType>> implements Logalike<MessageType> {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(LogalikeImpl.class);
+    private static final Logger LOGGER = LogManager.getLogger(LogalikeImpl.class);
 
     private final Input<MessageType> input;
     private final Output<MessageType> output;
@@ -95,7 +94,7 @@ public class LogalikeImpl<MessageType extends Message<MessageType>> implements L
             }
         }).peek(output::accept)
         /* Short-circuit this stream if Logalike is closing */
-        .anyMatch(m -> isClosed.get());
+                .anyMatch(m -> isClosed.get());
     }
 
     @Override

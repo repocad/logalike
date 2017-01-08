@@ -4,25 +4,24 @@
  * This software is distributed under the terms of the GNU General Public Licence version 3 (GPL Version 3),
  * copied verbatim in the file “COPYLEFT”.
  * In applying this licence, CERN does not waive the privileges and immunities granted to it by virtue
- * of its status as an Intergovernmental Organization or submit itself to any jurisdiction. 
- * 
+ * of its status as an Intergovernmental Organization or submit itself to any jurisdiction.
+ * <p>
  * Authors: Gergő Horányi <ghoranyi> and Jens Egholm Pedersen <jegp>
  */
 
 package cern.acet.tracing.processing;
 
-import java.time.Duration;
-import java.util.function.Consumer;
-import java.util.function.UnaryOperator;
-import java.util.stream.Stream;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import cern.acet.tracing.Message;
 import cern.acet.tracing.processing.window.FingerprintStrategy;
 import cern.acet.tracing.processing.window.MessageWindow;
 import cern.acet.tracing.processing.window.WindowManager;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.time.Duration;
+import java.util.function.Consumer;
+import java.util.function.UnaryOperator;
+import java.util.stream.Stream;
 
 /**
  * <p>
@@ -49,7 +48,7 @@ public class RepetitionProcessor<T extends Message<T>> implements Processor<T> {
     private static final String REPEATING_ACTION = "Repeating";
     private static final String REPEAT_COUNT_FIELD = "repeatCount";
     private static final String REPEATED_FIELD = "isRepeated";
-    private static final Logger LOGGER = LoggerFactory.getLogger(RepetitionProcessor.class);
+    private static final Logger LOGGER = LogManager.getLogger(RepetitionProcessor.class);
 
     private final UnaryOperator<T> nonRepetitionMapper;
     private final UnaryOperator<T> repetitionMapper;
@@ -120,7 +119,7 @@ public class RepetitionProcessor<T extends Message<T>> implements Processor<T> {
 
     /**
      * A builder that can help build a {@link RepetitionProcessor}.
-     * 
+     *
      * @author jepeders
      * @param <T> The type of {@link Message}s to process in the built {@link RepetitionProcessor}.
      */
@@ -134,7 +133,7 @@ public class RepetitionProcessor<T extends Message<T>> implements Processor<T> {
 
         /**
          * Builds an instance of a {@link RepetitionProcessor} using the current values of the builder.
-         * 
+         *
          * @return A {@link RepetitionProcessor}
          * @throws IllegalArgumentException If the {@link FingerprintStrategy} is not set via
          *             {@link #setFingerprintStrategy(FingerprintStrategy)}.
@@ -159,7 +158,7 @@ public class RepetitionProcessor<T extends Message<T>> implements Processor<T> {
         /**
          * Sets the {@link FingerprintStrategy} to use the value of fields with the given name. If no value is found, we
          * default to an empty string ("").
-         * 
+         *
          * @param fieldName The name of the field, whose value to use for the {@link FingerprintStrategy}.
          * @return The same builder with its {@link FingerprintStrategy} set.
          */

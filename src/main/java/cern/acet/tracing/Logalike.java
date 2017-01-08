@@ -75,7 +75,7 @@ public interface Logalike<MessageType extends Message<MessageType>> extends Auto
          * Add a {@link MessageMapper} (subclass to {@link UnaryOperator}) to the builder. Mappers are applied
          * sequentially in the order they arrive.
          *
-         * @param mappers A {@link MessageMapper}.
+         * @param mapper A {@link MessageMapper}.
          * @return The same builder instance for use in chaining calls.
          */
         Builder<MessageType> addMapper(UnaryOperator<MessageType> mapper);

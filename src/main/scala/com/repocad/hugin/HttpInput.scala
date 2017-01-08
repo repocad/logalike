@@ -1,6 +1,5 @@
 package com.repocad.hugin
 
-import java.time.ZonedDateTime
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.function.{Predicate, Supplier}
 import java.util.stream.Stream
@@ -21,7 +20,9 @@ sealed class HttpInput(private val queue: ArrayBlockingQueue[ElasticsearchMessag
   override def get(): Stream[ElasticsearchMessage] = {
     val supplier: Supplier[Option[ElasticsearchMessage]] = () => {
       try {
-        Some(queue.take())
+        val t = Some(queue.take())
+        println(t)
+        t
       } catch {
         case e: NoSuchElementException => None
       }
@@ -37,9 +38,7 @@ sealed class HttpInput(private val queue: ArrayBlockingQueue[ElasticsearchMessag
 
 object HttpInput extends Directives with DefaultJsonProtocol {
 
-  val timestampKey = "timestamp"
-
-  def apply(host: String, port: Int, messageFactory: () => ElasticsearchMessage): HttpInput = {
+  def apply(host: String, port: Int, messageBuilder: MessageBuilder): HttpInput = {
     implicit val system = ActorSystem("hugin")
     implicit val materializer = ActorMaterializer()
     // needed for the future flatMap/onComplete in the end
@@ -47,11 +46,11 @@ object HttpInput extends Directives with DefaultJsonProtocol {
 
     val queue: ArrayBlockingQueue[ElasticsearchMessage] = new ArrayBlockingQueue[ElasticsearchMessage](1000)
 
-    val bindingFuture = run(queue, host, port, messageFactory)
+    val bindingFuture = run(queue, host, port, messageBuilder)
     new HttpInput(queue, () => bindingFuture.flatMap(_.unbind()).onComplete(_ => system.terminate()))
   }
 
-  private def run(queue: ArrayBlockingQueue[ElasticsearchMessage], host: String, port: Int, messageFactory: () => ElasticsearchMessage)
+  private def run(queue: ArrayBlockingQueue[ElasticsearchMessage], host: String, port: Int, messageBuilder: MessageBuilder)
                  (implicit system: ActorSystem, materializer: ActorMaterializer): Future[Http.ServerBinding] = {
     val exceptionHandler = ExceptionHandler {
       case e: JsonParser.ParsingException =>
@@ -67,27 +66,14 @@ object HttpInput extends Directives with DefaultJsonProtocol {
             entity(as[String]) { body =>
               val map = body.parseJson.convertTo[Map[String, JsValue]]
               val entry = map.map(t => t._1 -> AnyJsonFormat.read(t._2).asInstanceOf[AnyRef])
-              val javaMap = scala.collection.JavaConverters.mapAsJavaMap[String, AnyRef](entry)
+              val message = messageBuilder.buildWith(entry)
 
-              val message = messageFactory()
-
-              val elasticsearchMessage = entry.get(timestampKey).map(value => try {
-                Right(ZonedDateTime.parse(value.toString))
-              } catch {
-                case e: Exception => Left("Malformed timestamp")
-              }) match {
-                case Some(Right(timestamp)) => message.put(javaMap).put(timestampKey, timestamp)
-                case Some(Left(error)) => message.put(javaMap).put("parsingerror", error)
-                case None => message.put(javaMap).put("parsingerror", "No timestamp given")
-              }
-
-              queue.put(elasticsearchMessage)
+              queue.put(message.merge)
 
               // Output error if parsing error
-              if (elasticsearchMessage.containsKey("parsingerror")) {
-                complete(HttpResponse(StatusCodes.BadRequest, entity = elasticsearchMessage.get("parsingerror").toString))
-              } else {
-                complete(HttpResponse(StatusCodes.OK))
+              message match {
+                case Left(error) => complete(HttpResponse(StatusCodes.BadRequest, entity = error.get("parsingerror").toString))
+                case Right(_) => complete(HttpResponse(StatusCodes.OK))
               }
             }
           }

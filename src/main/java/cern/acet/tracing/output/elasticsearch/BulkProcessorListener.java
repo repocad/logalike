@@ -4,12 +4,21 @@
  * This software is distributed under the terms of the GNU General Public Licence version 3 (GPL Version 3),
  * copied verbatim in the file “COPYLEFT”.
  * In applying this licence, CERN does not waive the privileges and immunities granted to it by virtue
- * of its status as an Intergovernmental Organization or submit itself to any jurisdiction. 
- * 
+ * of its status as an Intergovernmental Organization or submit itself to any jurisdiction.
+ * <p>
  * Authors: Gergő Horányi <ghoranyi> and Jens Egholm Pedersen <jegp>
  */
 
 package cern.acet.tracing.output.elasticsearch;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.elasticsearch.action.IndicesRequest;
+import org.elasticsearch.action.bulk.BulkItemResponse;
+import org.elasticsearch.action.bulk.BulkProcessor;
+import org.elasticsearch.action.bulk.BulkRequest;
+import org.elasticsearch.action.bulk.BulkResponse;
+import org.elasticsearch.action.index.IndexRequest;
 
 import java.util.Arrays;
 import java.util.List;
@@ -17,15 +26,6 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import org.elasticsearch.action.IndicesRequest;
-import org.elasticsearch.action.bulk.BulkItemResponse;
-import org.elasticsearch.action.bulk.BulkProcessor;
-import org.elasticsearch.action.bulk.BulkRequest;
-import org.elasticsearch.action.bulk.BulkResponse;
-import org.elasticsearch.action.index.IndexRequest;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * An implementation of a {@link BulkProcessor.Listener} that receives events when processing bulk data in the
@@ -36,12 +36,12 @@ import org.slf4j.LoggerFactory;
 public class BulkProcessorListener implements BulkProcessor.Listener {
 
     private static final String BULK_LOGGING_STRING = "%s bulk with %d actions. Id: %d Size: %d.";
-    private static final Logger LOGGER = LoggerFactory.getLogger(BulkProcessorListener.class);
+    private static final Logger LOGGER = LogManager.getLogger(BulkProcessorListener.class);
 
     /**
      * Counts messages sent to each indices, by grouping each request on its index and summing the number of
      * {@link IndexRequest}s for each index.
-     * 
+     *
      * @param requests The list of requests to count.
      * @return A {@link Map} which describes the name of each index and the number of messages stored in that index.
      */
@@ -55,7 +55,7 @@ public class BulkProcessorListener implements BulkProcessor.Listener {
      * Formats a logging string of the given verb (action), execution id and {@link BulkRequest}. If the debug level is
      * enabled in the {@link Logger} of this class, a richer string will be written where the message count for each
      * index is compiled.
-     * 
+     *
      * @param verb The verb of the bulk, e. g. "Preparing".
      * @param executionId The sequential execution id of the {@link BulkRequest}.
      * @param request The actual {@link BulkRequest}.

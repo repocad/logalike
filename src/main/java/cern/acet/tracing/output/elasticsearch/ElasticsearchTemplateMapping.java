@@ -11,6 +11,22 @@
 
 package cern.acet.tracing.output.elasticsearch;
 
+import cern.acet.tracing.Message;
+import cern.acet.tracing.util.type.TypeConstraint;
+import cern.acet.tracing.util.type.TypedMap;
+import com.google.common.collect.ImmutableMap;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.elasticsearch.action.admin.indices.template.get.GetIndexTemplatesResponse;
+import org.elasticsearch.client.Client;
+import org.elasticsearch.client.IndicesAdminClient;
+import org.elasticsearch.cluster.metadata.IndexTemplateMetaData;
+import org.elasticsearch.common.collect.ImmutableOpenMap;
+import org.elasticsearch.common.compress.CompressedXContent;
+
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -23,24 +39,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.elasticsearch.action.admin.indices.template.get.GetIndexTemplatesResponse;
-import org.elasticsearch.client.Client;
-import org.elasticsearch.client.IndicesAdminClient;
-import org.elasticsearch.cluster.metadata.IndexTemplateMetaData;
-import org.elasticsearch.common.collect.ImmutableOpenMap;
-import org.elasticsearch.common.compress.CompressedXContent;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import cern.acet.tracing.Message;
-import cern.acet.tracing.util.type.TypeConstraint;
-import cern.acet.tracing.util.type.TypedMap;
-
-import com.google.common.collect.ImmutableMap;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-
 /**
  * This class can fetch and return a type mapping from a template in an Elasticsearch cluster. A type mapping is a map
  * that associated field-keys with value types, which can be used in {@link Message}s to restrict insertions of values
@@ -52,7 +50,7 @@ import com.google.gson.JsonParser;
  */
 public class ElasticsearchTemplateMapping implements ElasticsearchTypeMapping {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(ElasticsearchTemplateMapping.class);
+    private static final Logger LOGGER = LogManager.getLogger(ElasticsearchTemplateMapping.class);
     private static final String TYPE_FIELD = "type";
     private static final String PROPERTIES_FIELD = "properties";
     static final Duration UPDATE_INTERVAL = Duration.ofHours(1);

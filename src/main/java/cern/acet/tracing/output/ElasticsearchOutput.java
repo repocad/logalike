@@ -8,35 +8,28 @@
 
 package cern.acet.tracing.output;
 
-import java.io.Closeable;
+import cern.acet.tracing.CloseableOutput;
+import cern.acet.tracing.Input;
+import cern.acet.tracing.Message;
+import cern.acet.tracing.Output;
+import cern.acet.tracing.output.elasticsearch.*;
+import cern.acet.tracing.processing.Processor;
+import cern.acet.tracing.util.CloseableConsumer;
+import cern.acet.tracing.util.type.TypeStrategy;
+import cern.acet.tracing.util.type.strategy.AcceptStrategy;
+import com.google.common.collect.ImmutableMap;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.elasticsearch.client.Client;
+import org.elasticsearch.node.NodeValidationException;
+
 import java.lang.management.ManagementFactory;
 import java.net.*;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-
-import cern.acet.tracing.CloseableOutput;
-import org.elasticsearch.action.admin.cluster.health.ClusterHealthRequest;
-import org.elasticsearch.client.Client;
-import org.elasticsearch.node.NodeValidationException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import cern.acet.tracing.Input;
-import cern.acet.tracing.Message;
-import cern.acet.tracing.Output;
-import cern.acet.tracing.output.elasticsearch.BulkConsumer;
-import cern.acet.tracing.output.elasticsearch.ClientBuilder;
-import cern.acet.tracing.output.elasticsearch.ElasticsearchIndex;
-import cern.acet.tracing.output.elasticsearch.ElasticsearchMessage;
-import cern.acet.tracing.output.elasticsearch.ElasticsearchTemplateMapping;
-import cern.acet.tracing.processing.Processor;
-import cern.acet.tracing.util.CloseableConsumer;
-import cern.acet.tracing.util.type.TypeStrategy;
-import cern.acet.tracing.util.type.strategy.AcceptStrategy;
-
-import com.google.common.collect.ImmutableMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * An output that serves data into an Elasticsearch cluster. Supports Elasticsearch >= 2.0.
@@ -47,7 +40,7 @@ public class ElasticsearchOutput implements CloseableOutput<ElasticsearchMessage
 
     private static final String CONSTRUCTOR_FORMAT_STRING = "Created ElasticsearchOutput with type strategy {} "
             + "and type mapping {}";
-    private static final Logger LOGGER = LoggerFactory.getLogger(ElasticsearchOutput.class);
+    private static final Logger LOGGER = LogManager.getLogger(ElasticsearchOutput.class);
     private static final ElasticsearchIndex DEFAULT_LOGALIKE_INDEX = ElasticsearchIndex.daily("logalike");
 
     /**
@@ -56,9 +49,10 @@ public class ElasticsearchOutput implements CloseableOutput<ElasticsearchMessage
     public static final Duration FLUSH_INTERVAL_MINUTES = Duration.ofMinutes(1);
 
     private final BulkConsumer consumer;
-    private final Optional<ElasticsearchTemplateMapping> mappingOption;
+    private final Optional<ElasticsearchTypeMapping> mappingOption;
     private final TypeStrategy typeStrategy;
     private final Client client;
+    private final AtomicLong messageCounter = new AtomicLong();
 
     /**
      * Constructs an {@link ElasticsearchOutput} that sends messages to a cluster connection, built by the set
@@ -79,6 +73,7 @@ public class ElasticsearchOutput implements CloseableOutput<ElasticsearchMessage
     @Override
     public void accept(ElasticsearchMessage message) {
         consumer.accept(message);
+        messageCounter.incrementAndGet();
     }
 
     /**
@@ -116,6 +111,15 @@ public class ElasticsearchOutput implements CloseableOutput<ElasticsearchMessage
     }
 
     /**
+     * The total amount of messages sent.
+     *
+     * @return A positive long.
+     */
+    public long getMessageCounter() {
+        return messageCounter.get();
+    }
+
+    /**
      * A builder for an {@link ElasticsearchOutput}.
      *
      * @author jepeders
@@ -129,7 +133,7 @@ public class ElasticsearchOutput implements CloseableOutput<ElasticsearchMessage
         private String clusterName = "elasticsearch";
         private ElasticsearchIndex defaultIndex = DEFAULT_LOGALIKE_INDEX;
         private List<InetSocketAddress> hosts = new ArrayList<InetSocketAddress>();
-        private Optional<ElasticsearchTemplateMapping> mapping = Optional.empty();
+        private Optional<ElasticsearchTypeMapping> mapping = Optional.empty();
         private TypeStrategy typeStrategy = AcceptStrategy.INSTANCE;
         private Duration flushInterval = FLUSH_INTERVAL_MINUTES;
         private String documentType = "logalike";
@@ -278,10 +282,10 @@ public class ElasticsearchOutput implements CloseableOutput<ElasticsearchMessage
          * Sets the Elasticsearch type mapping of the output. If this is not set, the type mapping will be empty, and no
          * type restraints will be put on the messages.
          *
-         * @param mapping An instance of a {@link ElasticsearchTemplateMapping}.
+         * @param mapping An instance of a {@link ElasticsearchTypeMapping}.
          * @return The same builder with the type mapping set.
          */
-        public Builder setMapping(ElasticsearchTemplateMapping mapping) {
+        public Builder setMapping(ElasticsearchTypeMapping mapping) {
             this.mapping = Optional.of(mapping);
             return this;
         }

@@ -6,8 +6,6 @@ libraryDependencies ++= Seq(
   "org.apache.logging.log4j" % "log4j-core" % "2.7",
   "org.elasticsearch.client" % "transport" % "5.1.1",
   "commons-io" % "commons-io" % "2.5",
-  "org.slf4j" % "slf4j-api" % "latest.release",
-  "org.slf4j" % "slf4j-log4j12" % "latest.release",
   "com.google.code.gson" % "gson" % "2.5",
   "com.google.guava" % "guava" % "20.0",
   "com.typesafe.akka" %% "akka-http" % "10.0.1",

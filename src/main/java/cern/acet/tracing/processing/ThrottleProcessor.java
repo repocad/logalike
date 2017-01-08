@@ -8,6 +8,13 @@
 
 package cern.acet.tracing.processing;
 
+import cern.acet.tracing.Message;
+import cern.acet.tracing.processing.window.FingerprintStrategy;
+import cern.acet.tracing.processing.window.MessageWindow;
+import cern.acet.tracing.processing.window.WindowManager;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.time.Clock;
 import java.time.Duration;
 import java.time.OffsetDateTime;
@@ -17,14 +24,6 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import cern.acet.tracing.Message;
-import cern.acet.tracing.processing.window.FingerprintStrategy;
-import cern.acet.tracing.processing.window.MessageWindow;
-import cern.acet.tracing.processing.window.WindowManager;
 
 /**
  * <p>
@@ -46,7 +45,7 @@ import cern.acet.tracing.processing.window.WindowManager;
  */
 public class ThrottleProcessor<T extends Message<T>> implements Processor<T> {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(ThrottleProcessor.class);
+    private static final Logger LOGGER = LogManager.getLogger(ThrottleProcessor.class);
 
     private final Map<String, ZonedDateTime> throttledEmitters = new ConcurrentHashMap<>();
 
@@ -60,13 +59,13 @@ public class ThrottleProcessor<T extends Message<T>> implements Processor<T> {
      * Creates a throttling filter that uses an empty {@link ThrottleListener}, and does not warn about messages being
      * throttled.
      *
-     * @param throttleCycle The duration of the cycle from which the messages are checked. Cannot be zero or less.
+     * @param throttleCycle        The duration of the cycle from which the messages are checked. Cannot be zero or less.
      * @param messageLimitPerCycle The limit of messages that an emitter can send per cycle.
-     * @param fingerprintStrategy A strategy to uniquely identify message emitters.
+     * @param fingerprintStrategy  A strategy to uniquely identify message emitters.
      * @throws IllegalArgumentException If the cycle duration is zero or less.
      */
     public ThrottleProcessor(Duration throttleCycle, int messageLimitPerCycle,
-            FingerprintStrategy<T> fingerprintStrategy) {
+                             FingerprintStrategy<T> fingerprintStrategy) {
         this(throttleCycle, messageLimitPerCycle, fingerprintStrategy, new ThrottleListener<T>() {
 
             @Override
@@ -90,14 +89,14 @@ public class ThrottleProcessor<T extends Message<T>> implements Processor<T> {
      * Creates a throttling filter that uses the given {@link ThrottleListener} to inform whenever emitters are being
      * (un)throttled.
      *
-     * @param throttleCycle The duration of the cycle from which the messages are checked. Cannot be zero or less.
+     * @param throttleCycle        The duration of the cycle from which the messages are checked. Cannot be zero or less.
      * @param messageLimitPerCycle The limit of messages that an emitter can send per cycle.
-     * @param fingerprintStrategy A strategy to uniquely identify message emitters.
-     * @param listener A {@link ThrottleListener} that can react to throttling events.
+     * @param fingerprintStrategy  A strategy to uniquely identify message emitters.
+     * @param listener             A {@link ThrottleListener} that can react to throttling events.
      * @throws IllegalArgumentException If the cycle duration is zero or less.
      */
     public ThrottleProcessor(Duration throttleCycle, int messageLimitPerCycle,
-            FingerprintStrategy<T> fingerprintStrategy, ThrottleListener<T> listener) {
+                             FingerprintStrategy<T> fingerprintStrategy, ThrottleListener<T> listener) {
         if (throttleCycle.isZero() || throttleCycle.isNegative()) {
             throw new IllegalArgumentException("The throttle cycle cannot be zero or less");
         }
@@ -129,7 +128,7 @@ public class ThrottleProcessor<T extends Message<T>> implements Processor<T> {
      * Processes the incoming stream by throttling incoming messages to the limits set by this class. This method uses a
      * {@link Supplier} to calculate the time, which is useful for testing purposes.
      *
-     * @param stream The {@link Stream} to process.
+     * @param stream        The {@link Stream} to process.
      * @param clockSupplier A {@link Supplier} that can produce {@link Clock}s which is used when closing messages.
      * @return A processed {@link Stream}.
      */
@@ -162,25 +161,25 @@ public class ThrottleProcessor<T extends Message<T>> implements Processor<T> {
      */
     private Optional<T> getThrottleMessage(ThrottleEntry entry) {
         switch (entry.status) {
-        case STARTING:
-            return listener.onThrottleStarting(entry.startTime, entry.fingerprint, entry.window.getCount());
-        case RECURRING:
-            return listener.onThrottleRecurring(entry.startTime, entry.fingerprint, entry.window.getCount());
-        case ENDING:
-            return listener.onThrottleEnding(entry.startTime, entry.fingerprint, entry.window.getCount());
-        default:
-            return Optional.empty();
+            case STARTING:
+                return listener.onThrottleStarting(entry.startTime, entry.fingerprint, entry.window.getCount());
+            case RECURRING:
+                return listener.onThrottleRecurring(entry.startTime, entry.fingerprint, entry.window.getCount());
+            case ENDING:
+                return listener.onThrottleEnding(entry.startTime, entry.fingerprint, entry.window.getCount());
+            default:
+                return Optional.empty();
         }
     }
 
     /**
      * Determines whether a message should be filtered out (throttled). A message is throttled if its emitter exists in
      * the list of throttled emitters or if the number of messages from the emitter is above the threshold.
-     * 
-     * @param message The message to examine.
+     *
+     * @param message       The message to examine.
      * @param clockSupplier A {@link Supplier} of {@link Clock}s for dependency injection.
      * @return True if the fingerprint is not in the list of throttled emitters and the number of messages from that
-     *         emitter is below the threshold.
+     * emitter is below the threshold.
      */
     private boolean shouldThrottle(T message, Supplier<Clock> clockSupplier) {
         final String fingerprint = fingerprintStrategy.getFingerprint(message);
@@ -193,42 +192,42 @@ public class ThrottleProcessor<T extends Message<T>> implements Processor<T> {
      * A listener that can react when the {@link ThrottleProcessor} activates events for certain message emitters. This
      * happens when a identified emitter (e. g. a host or whatever is identified by the {@link FingerprintStrategy})
      * sends too many messages, the {@link #onThrottleStarting(OffsetDateTime, Message, long)} messages will be called.
-     * 
-     * @author jepeders
+     *
      * @param <T> The type of {@link Message} the {@link ThrottleProcessor} treats.
+     * @author jepeders
      */
     public static interface ThrottleListener<T extends Message<T>> {
 
         /**
          * Informs the listener that an emitter is no longer throttled.
-         * 
-         * @param startTime The time when the emitter began to be throttled.
+         *
+         * @param startTime   The time when the emitter began to be throttled.
          * @param fingerprint A fingerprint of the emitter.
-         * @param count The count of messages the emitter sent within the last duration.
+         * @param count       The count of messages the emitter sent within the last duration.
          * @return A {@link Message} if the listener wishes to inform about the event, otherwise
-         *         {@link Optional#empty()}.
+         * {@link Optional#empty()}.
          */
         public Optional<T> onThrottleEnding(ZonedDateTime startTime, String fingerprint, long count);
 
         /**
          * Informs the listener that an emitter has been and are still being blocked.
-         * 
-         * @param startTime The time when the emitter began to be throttled.
+         *
+         * @param startTime   The time when the emitter began to be throttled.
          * @param fingerprint A fingerprint of the emitter.
-         * @param count The count of messages the emitter sent within the last duration.
+         * @param count       The count of messages the emitter sent within the last duration.
          * @return A {@link Message} if the listener wishes to inform about the event, otherwise
-         *         {@link Optional#empty()}.
+         * {@link Optional#empty()}.
          */
         public Optional<T> onThrottleRecurring(ZonedDateTime startTime, String fingerprint, long count);
 
         /**
          * Informs the listener that the emitter has not been blocked before, but will be blocked in the next cycle.
-         * 
-         * @param startTime The time when the emitter began to be throttled.
+         *
+         * @param startTime   The time when the emitter began to be throttled.
          * @param fingerprint A fingerprint of the emitter.
-         * @param count The count of messages the emitter sent within the last duration.
+         * @param count       The count of messages the emitter sent within the last duration.
          * @return A {@link Message} if the listener wishes to inform about the event, otherwise
-         *         {@link Optional#empty()}.
+         * {@link Optional#empty()}.
          */
         public Optional<T> onThrottleStarting(ZonedDateTime startTime, String fingerprint, long count);
 
@@ -277,7 +276,7 @@ public class ThrottleProcessor<T extends Message<T>> implements Processor<T> {
          * Creates a window status.
          *
          * @param window The window to store.
-         * @param clock The clock to use when time-stamping the window.
+         * @param clock  The clock to use when time-stamping the window.
          */
         private ThrottleEntry(MessageWindow<T> window, Clock clock) {
             this.window = window;
@@ -289,9 +288,9 @@ public class ThrottleProcessor<T extends Message<T>> implements Processor<T> {
         /**
          * Updates the status of a emitter, evaluated based on the number of messages sent within a throttle cycle.
          *
-         * @param count The number of messages sent within a throttle cycle.
+         * @param count       The number of messages sent within a throttle cycle.
          * @param fingerprint The name of the emitter.
-         * @param clock the clock to use when storing the time-stamp for when an emitter is blocked for the first time.
+         * @param clock       the clock to use when storing the time-stamp for when an emitter is blocked for the first time.
          * @return A {@link ThrottleStatus}.
          */
         private synchronized ThrottleStatus updateEmitterStatus(long count, Clock clock) {

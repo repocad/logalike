@@ -5,7 +5,7 @@
  * copied verbatim in the file “COPYLEFT”.
  * In applying this licence, CERN does not waive the privileges and immunities granted to it by virtue
  * of its status as an Intergovernmental Organization or submit itself to any jurisdiction.
- *
+ * <p>
  * Authors: Gergő Horányi <ghoranyi> and Jens Egholm Pedersen <jegp>
  */
 
@@ -13,8 +13,8 @@ package cern.acet.tracing.input.file.store;
 
 import cern.acet.tracing.util.ThrowingConsumer;
 import cern.acet.tracing.util.ThrowingSupplier;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
@@ -37,7 +37,7 @@ public class FilePositionStore implements AutoCloseable {
     public static final String DEFAULT_DIRECTORY = System.getProperty("user.home") + File.separator +
             DEFAULT_DIRECTORY_NAME;
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(FilePositionStore.class);
+    private static final Logger LOGGER = LogManager.getLogger(FilePositionStore.class);
 
     private final Map<Path, FilePositionStoreEntry> entries = new ConcurrentHashMap<>();
     private final Path directory;
@@ -58,7 +58,7 @@ public class FilePositionStore implements AutoCloseable {
     public synchronized void close() throws Exception {
         Map<Path, FilePositionStoreEntry> entriesCopy = new HashMap<>(entries);
         entries.clear();
-        entriesCopy.forEach((path, entry)-> {
+        entriesCopy.forEach((path, entry) -> {
             try {
                 entry.close();
             } catch (Exception e) {

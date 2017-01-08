@@ -4,26 +4,26 @@
  * This software is distributed under the terms of the GNU General Public Licence version 3 (GPL Version 3),
  * copied verbatim in the file “COPYLEFT”.
  * In applying this licence, CERN does not waive the privileges and immunities granted to it by virtue
- * of its status as an Intergovernmental Organization or submit itself to any jurisdiction. 
- * 
+ * of its status as an Intergovernmental Organization or submit itself to any jurisdiction.
+ * <p>
  * Authors: Gergő Horányi <ghoranyi> and Jens Egholm Pedersen <jegp>
  */
 
 package cern.acet.tracing.input.file;
-
-import java.io.File;
-import java.util.Optional;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Stream;
 
 import cern.acet.tracing.input.file.store.FilePositionStore;
 import cern.acet.tracing.input.file.tailer.PositionTailer;
 import cern.acet.tracing.input.file.tailer.PositionTailerListener;
 import org.apache.commons.io.input.Tailer;
 import org.apache.commons.io.input.TailerListener;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.io.File;
+import java.util.Optional;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 
 /**
  * An implementation of a {@link TailerListener} that can used by a {@link Tailer}. The
@@ -34,7 +34,7 @@ import org.slf4j.LoggerFactory;
  */
 public class PositionFileTailerListener implements PositionTailerListener {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(PositionFileTailerListener.class);
+    private static final Logger LOGGER = LogManager.getLogger(PositionFileTailerListener.class);
     private static final int TIMEOUT = 1;
     private static final TimeUnit TIMEOUT_UNIT = TimeUnit.MINUTES;
 
@@ -45,7 +45,7 @@ public class PositionFileTailerListener implements PositionTailerListener {
 
     /**
      * Creates a {@link PositionFileTailerListener} which uses the given queue to enqueue lines.
-     * 
+     *
      * @param queue The queue to use to enqueue lines.
      * @param positionStore A FilePositionStore to update the file positions for future recovery if the tailer stops.
      */
