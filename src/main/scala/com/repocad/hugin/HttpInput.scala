@@ -20,9 +20,7 @@ sealed class HttpInput(private val queue: ArrayBlockingQueue[ElasticsearchMessag
   override def get(): Stream[ElasticsearchMessage] = {
     val supplier: Supplier[Option[ElasticsearchMessage]] = () => {
       try {
-        val t = Some(queue.take())
-        println(t)
-        t
+        Some(queue.take())
       } catch {
         case e: NoSuchElementException => None
       }

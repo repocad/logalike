@@ -1,5 +1,9 @@
 
+version := "0.1"
 scalaVersion := "2.12.1"
+
+assemblyJarName in assembly := "hugin-0.1.jar"
+mainClass in assembly := Some("com.repocad.hugin.Hugin")
 
 libraryDependencies ++= Seq(
   "org.apache.logging.log4j" % "log4j-api" % "2.7",
