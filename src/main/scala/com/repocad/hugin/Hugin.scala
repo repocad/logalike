@@ -21,11 +21,18 @@ object Hugin {
   private final val start = Instant.now()
 
   def main(args: Array[String]): Unit = {
-    val host = if (args.length != 1) {
-      println("No host given, defaulting to localhost:9300")
-      "localhost:9300"
-    } else {
-      args(0)
+    val (elastiscearchHost, bindingHost) = args.length match {
+      case 0 =>
+        println("No host for elasticsearch or binding given, defaulting to localhost:9300 serving at localhost:8080")
+        ("localhost:9300", "localhost:8080")
+      case 1 =>
+        println("No host for local binding given, defaulting to localhost:8080")
+        (args(0), "localhost:8080")
+      case e =>
+        if (e > 2) {
+          println("Alright, stop with the arguments already!!")
+        }
+        (args(0), args(1))
     }
 
     // Define required fields and the type mapping for Elasticsearch
@@ -42,7 +49,7 @@ object Hugin {
 
     // Define the output to Elasticsearch and connect to the cluster
     val output = ElasticsearchOutput.builder()
-      .addHost(host)
+      .addHost(elastiscearchHost)
       .setClusterName("odin")
       .setDefaultIndex(ElasticsearchIndex.daily("logalike"))
       .setNodeName("hugin")
@@ -57,7 +64,7 @@ object Hugin {
 
     // Create the input
     val messageBuilder = new MessageBuilder(() => output.createTypedMessage(), requiredFields.keySet())
-    val input = HttpInput("localhost", 8080, messageBuilder)
+    val input = HttpInput(bindingHost, messageBuilder)
 
     // Start Logalike in a separate thread
     implicit val context = JavaConversions.asExecutionContext(Executors.newSingleThreadExecutor())

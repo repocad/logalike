@@ -11,6 +11,7 @@ import akka.http.scaladsl.server.{Directives, ExceptionHandler, RouteResult}
 import akka.stream.ActorMaterializer
 import cern.acet.tracing.CloseableInput
 import cern.acet.tracing.output.elasticsearch.ElasticsearchMessage
+import org.apache.logging.log4j.LogManager
 import spray.json.{DefaultJsonProtocol, JsArray, JsFalse, JsNull, JsNumber, JsObject, JsString, JsTrue, JsValue, JsonFormat, JsonParser}
 
 import scala.concurrent.Future
@@ -36,7 +37,9 @@ sealed class HttpInput(private val queue: ArrayBlockingQueue[ElasticsearchMessag
 
 object HttpInput extends Directives with DefaultJsonProtocol {
 
-  def apply(host: String, port: Int, messageBuilder: MessageBuilder): HttpInput = {
+  private val logger = LogManager.getLogger(HttpInput)
+
+  def apply(host: String, messageBuilder: MessageBuilder): HttpInput = {
     implicit val system = ActorSystem("hugin")
     implicit val materializer = ActorMaterializer()
     // needed for the future flatMap/onComplete in the end
@@ -44,11 +47,11 @@ object HttpInput extends Directives with DefaultJsonProtocol {
 
     val queue: ArrayBlockingQueue[ElasticsearchMessage] = new ArrayBlockingQueue[ElasticsearchMessage](1000)
 
-    val bindingFuture = run(queue, host, port, messageBuilder)
+    val bindingFuture = run(queue, host, messageBuilder)
     new HttpInput(queue, () => bindingFuture.flatMap(_.unbind()).onComplete(_ => system.terminate()))
   }
 
-  private def run(queue: ArrayBlockingQueue[ElasticsearchMessage], host: String, port: Int, messageBuilder: MessageBuilder)
+  private def run(queue: ArrayBlockingQueue[ElasticsearchMessage], host: String, messageBuilder: MessageBuilder)
                  (implicit system: ActorSystem, materializer: ActorMaterializer): Future[Http.ServerBinding] = {
     val exceptionHandler = ExceptionHandler {
       case e: JsonParser.ParsingException =>
@@ -78,7 +81,23 @@ object HttpInput extends Directives with DefaultJsonProtocol {
         }
       }
 
-    Http().bindAndHandle(RouteResult.route2HandlerFlow(route), host, port)
+    val (hostName, port) = extractHostAndPort(host)
+
+    logger.info(s"Starting HTTP server at $host:$port")
+    Http().bindAndHandle(RouteResult.route2HandlerFlow(route), hostName, port)
+  }
+
+  private def extractHostAndPort(host: String): (String, Int) = {
+    try {
+      host.split(":").toList match {
+        case hostName :: port :: Nil => (hostName, Integer.parseInt(port))
+        case e => throw new IllegalArgumentException(host)
+      }
+    } catch {
+      case e: Exception =>
+        logger.warn(s"Failed to parse binding host and port. Defaulting to localhost:8080", e)
+        ("localhost", 8080)
+    }
   }
 
 }
