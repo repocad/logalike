@@ -14,6 +14,7 @@ libraryDependencies ++= Seq(
   "com.google.guava" % "guava" % "20.0",
   "com.typesafe.akka" %% "akka-http" % "10.0.1",
   "com.typesafe.akka" %% "akka-http-spray-json" % "10.0.1",
+  "ch.megard" %% "akka-http-cors" % "0.1.11",
 
   "org.mockito" % "mockito-all" % "1.10.19" % Test,
   "junit" % "junit" % "4.7" % Test

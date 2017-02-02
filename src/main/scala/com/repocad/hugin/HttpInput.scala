@@ -6,15 +6,19 @@ import java.util.stream.Stream
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
+import akka.http.scaladsl.model.HttpMethods._
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.{HttpOriginRange, `Access-Control-Allow-Origin`}
 import akka.http.scaladsl.server.{Directives, ExceptionHandler, RouteResult}
 import akka.stream.ActorMaterializer
 import cern.acet.tracing.CloseableInput
 import cern.acet.tracing.output.elasticsearch.ElasticsearchMessage
+import ch.megard.akka.http.cors.{CorsDirectives, CorsSettings, HttpHeaderRange}
 import org.apache.logging.log4j.LogManager
 import spray.json.{DefaultJsonProtocol, JsArray, JsFalse, JsNull, JsNumber, JsObject, JsString, JsTrue, JsValue, JsonFormat, JsonParser}
 
+import scala.collection.immutable
+import scala.collection.immutable.Seq
 import scala.concurrent.Future
 
 sealed class HttpInput(private val queue: ArrayBlockingQueue[ElasticsearchMessage], private val closeFunction: () => Unit) extends CloseableInput[ElasticsearchMessage] {
@@ -40,7 +44,18 @@ object HttpInput extends Directives with DefaultJsonProtocol {
 
   private val logger = LogManager.getLogger(HttpInput)
 
-  val allowedOrigins: HttpOriginRange = HttpOriginRange("*")
+  val corsSettings = new CorsSettings {
+    val allowGenericHttpRequests = true
+    val allowCredentials = true
+    val allowedOrigins = HttpOriginRange.*
+    val allowedHeaders = HttpHeaderRange.*
+
+    def allowedMethods = immutable.Seq(PUT, OPTIONS)
+
+    val exposedHeaders: Seq[String] = Seq()
+
+    val maxAge = Some[Long](30 * 60)
+  }
 
   def apply(host: String, messageBuilder: MessageBuilder): HttpInput = {
     implicit val system = ActorSystem("hugin")
@@ -64,21 +79,23 @@ object HttpInput extends Directives with DefaultJsonProtocol {
     import spray.json._
 
     val route =
-      handleExceptions(exceptionHandler) {
-        path("") {
-          put {
-            respondWithHeader(`Access-Control-Allow-Origin`.forRange(allowedOrigins)) {
-              entity(as[String]) { body =>
-                val map = body.parseJson.convertTo[Map[String, JsValue]]
-                val entry = map.map(t => t._1 -> AnyJsonFormat.read(t._2).asInstanceOf[AnyRef])
-                val message = messageBuilder.buildWith(entry)
+      CorsDirectives.cors(corsSettings) {
+        handleExceptions(exceptionHandler) {
+          path("") {
+            put {
+              respondWithHeader(`Access-Control-Allow-Origin`.*) {
+                entity(as[String]) { body =>
+                  val map = body.parseJson.convertTo[Map[String, JsValue]]
+                  val entry = map.map(t => t._1 -> AnyJsonFormat.read(t._2).asInstanceOf[AnyRef])
+                  val message = messageBuilder.buildWith(entry)
 
-                queue.put(message.merge)
+                  queue.put(message.merge)
 
-                // Output error if parsing error
-                message match {
-                  case Left(error) => complete(HttpResponse(StatusCodes.BadRequest, entity = error.get("parsingerror").toString))
-                  case Right(_) => complete(HttpResponse(StatusCodes.OK))
+                  // Output error if parsing error
+                  message match {
+                    case Left(error) => complete(HttpResponse(StatusCodes.BadRequest, entity = error.get("parsingerror").toString))
+                    case Right(_) => complete(HttpResponse(StatusCodes.OK))
+                  }
                 }
               }
             }
