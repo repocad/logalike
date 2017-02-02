@@ -7,6 +7,7 @@ import java.util.stream.Stream
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
+import akka.http.scaladsl.model.headers.{HttpOriginRange, `Access-Control-Allow-Origin`}
 import akka.http.scaladsl.server.{Directives, ExceptionHandler, RouteResult}
 import akka.stream.ActorMaterializer
 import cern.acet.tracing.CloseableInput
@@ -39,6 +40,8 @@ object HttpInput extends Directives with DefaultJsonProtocol {
 
   private val logger = LogManager.getLogger(HttpInput)
 
+  val allowedOrigins: HttpOriginRange = HttpOriginRange("*")
+
   def apply(host: String, messageBuilder: MessageBuilder): HttpInput = {
     implicit val system = ActorSystem("hugin")
     implicit val materializer = ActorMaterializer()
@@ -64,17 +67,19 @@ object HttpInput extends Directives with DefaultJsonProtocol {
       handleExceptions(exceptionHandler) {
         path("") {
           put {
-            entity(as[String]) { body =>
-              val map = body.parseJson.convertTo[Map[String, JsValue]]
-              val entry = map.map(t => t._1 -> AnyJsonFormat.read(t._2).asInstanceOf[AnyRef])
-              val message = messageBuilder.buildWith(entry)
+            respondWithHeader(`Access-Control-Allow-Origin`.forRange(allowedOrigins)) {
+              entity(as[String]) { body =>
+                val map = body.parseJson.convertTo[Map[String, JsValue]]
+                val entry = map.map(t => t._1 -> AnyJsonFormat.read(t._2).asInstanceOf[AnyRef])
+                val message = messageBuilder.buildWith(entry)
 
-              queue.put(message.merge)
+                queue.put(message.merge)
 
-              // Output error if parsing error
-              message match {
-                case Left(error) => complete(HttpResponse(StatusCodes.BadRequest, entity = error.get("parsingerror").toString))
-                case Right(_) => complete(HttpResponse(StatusCodes.OK))
+                // Output error if parsing error
+                message match {
+                  case Left(error) => complete(HttpResponse(StatusCodes.BadRequest, entity = error.get("parsingerror").toString))
+                  case Right(_) => complete(HttpResponse(StatusCodes.OK))
+                }
               }
             }
           }
@@ -83,7 +88,7 @@ object HttpInput extends Directives with DefaultJsonProtocol {
 
     val (hostName, port) = extractHostAndPort(host)
 
-    logger.info(s"Starting HTTP server at $host:$port")
+    logger.info(s"Starting HTTP server at $hostName:$port")
     Http().bindAndHandle(RouteResult.route2HandlerFlow(route), hostName, port)
   }
 
