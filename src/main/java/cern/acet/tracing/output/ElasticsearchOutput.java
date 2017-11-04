@@ -21,6 +21,7 @@ import com.google.common.collect.ImmutableMap;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.client.Client;
+import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.node.NodeValidationException;
 
 import java.lang.management.ManagementFactory;
@@ -137,6 +138,7 @@ public class ElasticsearchOutput implements CloseableOutput<ElasticsearchMessage
         private TypeStrategy typeStrategy = AcceptStrategy.INSTANCE;
         private Duration flushInterval = FLUSH_INTERVAL_MINUTES;
         private String documentType = "logalike";
+        private Settings.Builder settings = Settings.builder();
 
         private String nodeName;
 
@@ -150,6 +152,10 @@ public class ElasticsearchOutput implements CloseableOutput<ElasticsearchMessage
             } catch (UnknownHostException e) {
                 hostName = "unknown host";
             }
+
+            // Disable transport client sniffing by default
+            // (any errors will lead to connection problems)
+            settings.put("client.transport.sniff", false);
 
             try {
                 final String pid = ManagementFactory.getRuntimeMXBean().getName().split("@")[0];
@@ -205,12 +211,24 @@ public class ElasticsearchOutput implements CloseableOutput<ElasticsearchMessage
 
         Client getClient() throws NodeValidationException, UnknownHostException {
             //@formatter:off
-            return new ClientBuilder()
+            return new ClientBuilder(settings.build())
                     .setClusterName(clusterName)
                     .setHosts(hosts)
                     .setNodeName(nodeName)
                     .build();
             //@formatter:on
+        }
+
+        /**
+         * Adds a setting to the ElasticsearchOutput that will be added when constructing the (Transport)Client for
+         * communicating with the Elasticsearch host.
+         * @param setting The key of the setting.
+         * @param value The value of the setting.
+         * @return This builder.
+         */
+        public Builder set(String setting, Object value) {
+            this.settings.put(setting, value);
+            return this;
         }
 
         /**

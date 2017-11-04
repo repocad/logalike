@@ -26,8 +26,11 @@ object Hugin {
         println("No host for elasticsearch or binding given, defaulting to localhost:9300 serving at localhost:8080")
         ("localhost:9300", "localhost:8080")
       case 1 =>
-        println("No host for local binding given, defaulting to localhost:8080")
+        println(s"Binding to Elasticsearch at ${args(0)}. No host for local binding given, defaulting to localhost:8080")
         (args(0), "localhost:8080")
+      case 2 =>
+        println(s"Binding to Elasticsearch at ${args(0)} and hosting at ${args(1)}.")
+        (args(0), args(1))
       case e =>
         if (e > 2) {
           println("Alright, stop with the arguments already!!")

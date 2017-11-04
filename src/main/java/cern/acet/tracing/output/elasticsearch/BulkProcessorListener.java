@@ -65,7 +65,7 @@ public class BulkProcessorListener implements BulkProcessor.Listener {
         final String defaultLogString = String.format(BULK_LOGGING_STRING, verb, request.numberOfActions(),
                 executionId, request.estimatedSizeInBytes());
         if (LOGGER.isDebugEnabled() || LOGGER.isTraceEnabled()) {
-            List<? extends IndicesRequest> requests = request.subRequests();
+            List<? extends IndicesRequest> requests = request.requests();
             Map<String, Integer> messageCountPerIndex = countMessagesSentToIndices(requests);
             String groupedIndexRequests = messageCountPerIndex.entrySet().stream()
                     .map(e -> e.getKey() + " -> " + e.getValue()).collect(Collectors.joining("\n\t"));
@@ -102,6 +102,6 @@ public class BulkProcessorListener implements BulkProcessor.Listener {
 
     @Override
     public void afterBulk(long executionId, BulkRequest request, Throwable failure) {
-        LOGGER.error("Error when executing bulk: " + failure.getLocalizedMessage());
+        LOGGER.error("Error when executing bulk: " + failure.getLocalizedMessage(), failure);
     }
 }
